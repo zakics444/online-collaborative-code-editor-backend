@@ -1,23 +1,24 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();  // Ensure that .env file is loaded
 const http = require('http');
 const socketIo = require('socket.io');
 const connectDB = require('./config/db');
-const authRoutes = require('./routes/auth').router;  // Import the router object correctly from auth.js
-const projectRoutes = require('./routes/projects');  // Import project routes
+const authRoutes = require('./routes/auth');
+const projectRoutes = require('./routes/projects');  // Ensure the project routes are imported
 const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json());  // Parse JSON request bodies
+app.use(express.json());
 
 // Connect to MongoDB
 connectDB();
 
-// Routes
-app.use('/api/auth', authRoutes);  // Use authentication routes correctly
-app.use('/api/projects', projectRoutes);  // Use project routes
+// Authentication Routes
+app.use('/api/auth', authRoutes);  // Signup/Login Routes
+
+// Project Routes (Protected)
+app.use('/api/projects', projectRoutes);  // Project creation/join routes
 
 // Set up HTTP server and WebSocket
 const server = http.createServer(app);
@@ -28,21 +29,17 @@ const io = socketIo(server, {
     },
 });
 
-// WebSocket Connection for real-time collaboration (Code editor, Chat)
+// WebSocket Connection for real-time features
 io.on('connection', (socket) => {
     console.log('New WebSocket connection');
-
-    // Handle real-time code collaboration
     socket.on('codeChange', (codeData) => {
-        socket.broadcast.emit('receiveCode', codeData);  // Broadcast code change to other clients
+        socket.broadcast.emit('receiveCode', codeData);
     });
 
-    // Handle real-time chat messages
     socket.on('sendMessage', (messageData) => {
-        io.emit('receiveMessage', messageData);  // Broadcast chat message to all clients
+        io.emit('receiveMessage', messageData);
     });
 
-    // Handle disconnection
     socket.on('disconnect', () => {
         console.log('User disconnected');
     });

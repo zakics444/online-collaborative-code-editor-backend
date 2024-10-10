@@ -1,6 +1,7 @@
 const express = require('express');
-const Project = require('../models/Project');  // Correct import of Project model
-const authMiddleware = require('./auth').authMiddleware;  // Correct import of authMiddleware
+const bcrypt = require('bcryptjs');
+const Project = require('../models/Project');  // Import Project model
+const authMiddleware = require('../middleware/authMiddleware');  // Import authMiddleware
 const router = express.Router();
 
 // Create Project (Protected Route)
@@ -8,22 +9,24 @@ router.post('/create', authMiddleware, async (req, res) => {
     const { projectName, password } = req.body;
 
     try {
-        // Ensure the project name and password are provided
-        if (!projectName || !password) {
-            return res.status(400).json({ error: 'Project name and password are required' });
+        // Check if the project already exists
+        const existingProject = await Project.findOne({ name: projectName });
+        if (existingProject) {
+            return res.status(400).json({ error: 'Project already exists' });
         }
 
         // Create a new project
         const newProject = new Project({
             name: projectName,
-            password: password,  // In production, hash the password for security
-            owner: req.user.userId  // Set the authenticated user as the project owner
+            password: password,  // Ideally, hash the password
+            owner: req.user.userId  // Set the project owner to the authenticated user
         });
 
+        // Save the project to the database
         await newProject.save();
+
         res.status(201).json({ message: 'Project created successfully' });
     } catch (error) {
-        console.error(error.message);
         res.status(500).json({ error: 'Failed to create project' });
     }
 });
@@ -38,10 +41,9 @@ router.post('/join', authMiddleware, async (req, res) => {
             return res.status(401).json({ error: 'Invalid project credentials' });
         }
 
-        // Logic to associate the user with the project (if necessary)
+        // You can add logic here to associate the user with the project if necessary
         res.status(200).json({ message: 'Joined project successfully' });
     } catch (error) {
-        console.error(error.message);
         res.status(500).json({ error: 'Failed to join project' });
     }
 });
