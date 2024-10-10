@@ -1,49 +1,28 @@
-const express = require('express');
-const Project = require('../models/Project');  // Correct import of Project model
-const authMiddleware = require('./auth').authMiddleware;  // Correct import of authMiddleware
-const router = express.Router();
+const mongoose = require('mongoose');
 
-// Create Project (Protected Route)
-router.post('/create', authMiddleware, async (req, res) => {
-    const { projectName, password } = req.body;
-
-    try {
-        // Ensure the project name and password are provided
-        if (!projectName || !password) {
-            return res.status(400).json({ error: 'Project name and password are required' });
-        }
-
-        // Create a new project
-        const newProject = new Project({
-            name: projectName,
-            password: password,  // In production, hash the password for security
-            owner: req.user.userId  // Set the authenticated user as the project owner
-        });
-
-        await newProject.save();
-        res.status(201).json({ message: 'Project created successfully' });
-    } catch (error) {
-        console.error(error.message);
-        res.status(500).json({ error: 'Failed to create project' });
+const ProjectSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: [true, 'Project name is required'],
+        trim: true,
+        unique: true  // Each project must have a unique name
+    },
+    password: {
+        type: String,
+        required: [true, 'Password is required'],
+        minlength: [6, 'Password must be at least 6 characters long']  // Enforce a minimum password length
+    },
+    owner: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',  // Reference to the User model (Project owner)
+        required: true  // Each project must have an owner
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now  // Automatically track the creation date of the project
     }
 });
 
-// Join Project (Protected Route)
-router.post('/join', authMiddleware, async (req, res) => {
-    const { projectName, password } = req.body;
+const Project = mongoose.model('Project', ProjectSchema);
 
-    try {
-        const project = await Project.findOne({ name: projectName });
-        if (!project || project.password !== password) {
-            return res.status(401).json({ error: 'Invalid project credentials' });
-        }
-
-        // Logic to associate the user with the project (if necessary)
-        res.status(200).json({ message: 'Joined project successfully' });
-    } catch (error) {
-        console.error(error.message);
-        res.status(500).json({ error: 'Failed to join project' });
-    }
-});
-
-module.exports = router;
+module.exports = Project;
